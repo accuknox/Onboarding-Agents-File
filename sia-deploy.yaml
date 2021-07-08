@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: shared-inforemer-agent-poc-cluster
+  name: shared-inforemer-agent-poc-cluster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shared-inforemer-agent-poc-cluster
+  template:
+    metadata:
+      labels:
+        app: shared-inforemer-agent-poc-cluster
+    spec:
+      containers:
+      - image: http://us.gcr.io/mimetic-kit-294408/accuknox-agents/dev/shared-informer-agent:1.0.1
+        name: shared-inforemer-agent-poc-cluster
+      serviceAccountName: accuknox-agents
