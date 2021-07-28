@@ -1,0 +1,132 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: feeder-service
+---
+# Source: node-event/templates/feeder.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: feeder-service
+  name: feeder-secret
+type: Opaque
+data:
+  secret_key: <enter-the-secret-key-here>
+---
+# Source: node-event/templates/kafka-secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: feeder-service
+  name: fs-event-forwarder-kafka-ssl
+type: Opaque
+data:
+  ca.pem: |-
+    <enter-the-ca-value-here>
+  user.p12: |-
+    <enter-the-secret-key-here>
+---
+# Source: node-event/templates/secret.yaml
+apiVersion: v1
+data:
+  namespace: feeder-service
+  .dockerconfigjson: <enter-the-value-here> 
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: dockercred
+type: kubernetes.io/dockerconfigjson
+---
+# Source: node-event/templates/feeder-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: feeder-service
+  name: feeder-configmap
+data:
+  tenant_id: <enter-the-ID-here>
+---
+# Source: node-event/templates/deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: feeder-service
+  name: feeder
+  labels:
+    node: feeder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      node: feeder
+  template:
+    metadata:
+      labels:
+        node: feeder
+    spec:
+      imagePullSecrets:
+      - name: dockercred
+      volumes:
+        - name: feeder-secret
+          secret:
+            secretName: feeder-secret
+        - name: feeder-configmap
+          configMap:
+            name: feeder-configmap
+        - name: kafka-ssl-config
+          secret:
+            secretName: fs-event-forwarder-kafka-ssl
+      containers:
+        - name: feeder
+          image: us.gcr.io/mimetic-kit-294408/accuknox-agents/dev/feeder-service:1.0.192
+          resources:
+            limits:
+              cpu: 150m
+              memory: 250Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+          - name: feeder-secret
+            mountPath: /credentials/config
+          - name: feeder-configmap
+            mountPath: /credentials/configmap
+          - name: kafka-ssl-config
+            mountPath: /home/feeder-service
+            readOnly: true 
+          env: 
+          - name: KAFKA_TOPIC_FOR_CILIUM_TELEMETRY 
+            value: "cilium-telemetry-new" 
+          - name: KAFKA_TOPIC_FOR_CILIUM_ALERT 
+            value: "cilium-alerts" 
+          - name: KAFKA_TOPIC_FOR_KUBEARMOR_MESSAGES 
+            value: "kubearmor-messages" 
+          - name: KAFKA_TOPIC_FOR_KUBEARMOR_ALERT 
+            value: "kubearmor-alerts" 
+          - name: KAFKA_TOPIC_FOR_KUBEARMOR_SYSLOG 
+            value: "kubearmor-syslogs" 
+          - name: KAFKA_TOPIC_FOR_VAE_SUMMESSAGE 
+            value: "adtelemetryv1" 
+          - name: KAFKA_TOPIC_FOR_SCOOP_ALERTS 
+            value: "scoop-alerts" 
+          - name: SUMMARIZER_TOPIC 
+            value: "summary" 
+          - name: SUMMARIZER_ADDR 
+            value: "tcp://summarize.default:3655" 
+          - name: HUBBLE_ENABLED 
+            value: "true" 
+          - name: KUBEARMOR_ENABLED 
+            value: "true" 
+          - name: ANOMOLY_DETECTION_AGENT_ENABLED 
+            value: "false" 
+          - name: CDP_AGENT_ENABLED 
+            value: "false" 
+          - name: KAFKA_SECURITY_PROTOCOL 
+            value: "SSL" 
+          - name: KAFKA_SSL_ENABLED 
+            value: "true" 
+          - name: FEEDER_SERVICE_PLATFORM 
+            value: "GCP" 
+          - name: NODE_NAME 
+            value: "accuknox-agents"
